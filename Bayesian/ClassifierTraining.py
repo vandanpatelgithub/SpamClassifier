@@ -50,8 +50,11 @@ def stddev(numbers):
     return math.sqrt(variance)
 
 def summarize(dataset):
-    summaries = [(mean(attribute), stddev(attribute)) for attribute in zip(*dataset)]
-    del summaries[-1]
+    newDataset = []
+    for data in dataset:
+        newDataset.append(data[:-1])
+
+    summaries = [(mean(attribute), stddev(attribute)) for attribute in zip(*newDataset)]
     return summaries
 
 def summarizeByClass(dataset):
@@ -88,6 +91,14 @@ dataset = loadTextFile(DEFAULT_PATH + TRAINING_DATA)
 print("DATASET : " + str(dataset))
 seperated = seperateByClass(dataset)
 print("SEPARATED BY CLASS : " + str(seperated))
+summary = summarize(dataset)
+print("SUMMARY : " + str(summary))
+summary_by_class = summarizeByClass(dataset)
+print("SUMMARY BY CLASS : " + str(summary_by_class))
+inputVector = [46.0, 453.0, 1.2, '?']
+result = predict(summary_by_class, inputVector)
+print("Result : " +  result)
+
 
 def readWordFrequency(file):
 
