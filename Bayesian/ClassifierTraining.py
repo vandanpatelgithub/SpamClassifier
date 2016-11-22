@@ -2,6 +2,7 @@ import random
 import math
 import glob
 import re
+import enchant
 
 DEFAULT_PATH = "/Users/preetipatel/PycharmProjects/SpamClassifier/Training Data"
 TRAINING_DATA = "/training_data.txt"
@@ -10,6 +11,7 @@ WORD_FREQUENCY = "/words_frequency.txt"
 TESTING_EMAILS = "/Users/preetipatel/PycharmProjects/SpamClassifier/Testing Emails/*.txt"
 testing_emails_list = glob.glob(TESTING_EMAILS)
 regex = re.compile('[^a-zA-Z]')
+dictionary = enchant.DictWithPWL("en_US","mywords.txt")
 
 words_ignore_list = ['', '\n', 'the', 'to', 'a', 'an', 'some', 'we', 'i', 'you', 'he', 'she', 'it', 'they',
                      'and', 'of', 'for', 'our', 'your', 'be', 'with', 'is', 'are', 'this', 'that', 'in', 'will',
@@ -85,20 +87,43 @@ def predict(summaries, inputVector):
         if bestLabel is None or probability > bestProb:
             bestProb = probability
             bestLabel = classValue
-    return bestLabel
+    return bestLabel, bestProb
 
-dataset = loadTextFile(DEFAULT_PATH + TRAINING_DATA)
-print("DATASET : " + str(dataset))
-seperated = seperateByClass(dataset)
-print("SEPARATED BY CLASS : " + str(seperated))
-summary = summarize(dataset)
-print("SUMMARY : " + str(summary))
-summary_by_class = summarizeByClass(dataset)
-print("SUMMARY BY CLASS : " + str(summary_by_class))
-inputVector = [46.0, 453.0, 1.2, '?']
-result = predict(summary_by_class, inputVector)
-print("Result : " +  result)
+def formatWord(word):
+    word = word.lower()
+    word = word.rstrip()
+    word = regex.sub('', word)
 
+    return word
+
+def getPredictions(summaries, inputSet):
+    predictions = []
+    for i in range(len(inputSet)):
+        label, prob = predict(summaries, inputSet[i])
+        result = (label, prob)
+        predictions.append(result)
+    return predictions
+
+def length_spelling_inputSet(file_list):
+
+    inputSet = []
+    for file in file_list:
+        body_length = 0
+        spelling_errors = 0
+        with open(file) as f:
+            lines = f.readlines()
+            subject_length = len(lines[0].rstrip())
+            for line in lines:
+                words = line.split(" ")
+                for word in words:
+                    word = formatWord(word)
+                    word_length = len(word)
+                    if word not in words_ignore_list and word_length != 0 and word_length < 15:
+                        if not dictionary.check(word.title()):
+                            spelling_errors = spelling_errors + 1
+                body_length = body_length + len(line)
+            inputSet.append([float(subject_length),float(body_length-subject_length), float(spelling_errors),'?'])
+    return inputSet
 
 def readWordFrequency(file):
 
@@ -146,7 +171,6 @@ def combiningProbabilities(probabilities):
         combined_probability = 0
     else:
         combined_probability = float(multiply_prob / (multiply_prob + inverse_prob))
-
     return combined_probability
 
 def final_probabilities(file_list):
@@ -166,35 +190,69 @@ def final_probabilities(file_list):
                     if word not in words_ignore_list:
                         if len(word) != 0 and len(word) < 15:
                             if word in final_spamicity:
-                                print(word + " : " + str(final_spamicity[word]))
                                 probability_list.append(final_spamicity[word])
         result = combiningProbabilities(probability_list)
-        print(result)
         result_list.append(result)
     return result_list
 
-def output(file_list):
+def word_frequency_output(file_list):
+
+    frequency_output_list = []
+    probability_list = []
 
     final_probs = final_probabilities(file_list)
 
     for i in range(len(file_list)):
-        list = file_list[i].split("/")
-        filename = list[-1]
+        probability_list.append(final_probs[i])
         if final_probs[i] > 0.5:
-            print(filename + " is SPAM")
+            frequency_output_list.append("SPAM")
         else:
-            print(filename + " is HAM")
+            frequency_output_list.append("HAM")
+
+    return probability_list
+
+def final_output(frequency_list, prediction_label, prediction_prob):
+    average_list = []
+    label_list = []
+    for i in range(len(frequency_list)):
+        if prediction_label[i] == "SPAM":
+            average = (float(frequency_list[i]) * 1.5 + float(prediction_prob[i])) / 2
+        elif prediction_label[i] == "HAM":
+            average = (float(frequency_list[i]) * 1.5 + float(1.0 - prediction_prob[i])) / 2
+        average_list.append(average)
+
+    for average in average_list:
+        if average > 0.5 and average <= 1.0:
+            label_list.append("SPAM")
+        else:
+            label_list.append("HAM")
+
+    return label_list
 
 
+#Output Based On Word Frequency
+spam, ham = readWordFrequency(DEFAULT_PATH+WORD_FREQUENCY)
+final_spamicity = build_final_dictionary(spam, ham, DEFAULT_PATH+WORD_FREQUENCY)
+frequency_output = word_frequency_output(testing_emails_list)
+print(str(frequency_output))
 
-#spam, ham = readWordFrequency(DEFAULT_PATH+WORD_FREQUENCY)
-#final_spamicity = build_final_dictionary(spam, ham, DEFAULT_PATH+WORD_FREQUENCY)
-#print(final_spamicity)
-#output(testing_emails_list)
+#Output Based On Statistical Analysis of length and spelling errors
+dataset = loadTextFile(DEFAULT_PATH + TRAINING_DATA)
+seperated = seperateByClass(dataset)
+summary = summarize(dataset)
+summary_by_class = summarizeByClass(dataset)
+inputSet = length_spelling_inputSet(testing_emails_list)
+predictions = getPredictions(summary_by_class, inputSet)
+prediction_label = [x[0] for x in predictions]
+prediction_prob = [x[1] for x in predictions]
+print(str(prediction_label))
+print(str(prediction_prob))
 
-#probabilities = [1.0,0]
-#result  = combiningProbabilities(probabilities)
-#print("Probabilities : " + str(result))
+#Final Output
+final_list = final_output(frequency_output, prediction_label ,prediction_prob)
+print(str(final_list))
+
+
 
 
 

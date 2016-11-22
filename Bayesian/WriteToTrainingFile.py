@@ -39,7 +39,7 @@ def writeToTrainingdata(list, spam_boolean):
 
         with open(file) as f:
             lines = f.readlines()
-            subject_length = len(lines[0])
+            subject_length = len(lines[0].rstrip())
             for line in lines:
                 words = line.split(" ")
                 for word in words:
@@ -47,7 +47,6 @@ def writeToTrainingdata(list, spam_boolean):
                     word_length = len(word)
                     if word not in words_ignore_list and word_length != 0 and word_length < 15:
                         if not dictionary.check(word.title()):
-                            print("Spelling Error : " + word + str(spam_boolean))
                             spelling_errors = spelling_errors + 1
                         word_list.append(word)
                 body_length = body_length + len(line)
