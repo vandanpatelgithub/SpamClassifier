@@ -234,7 +234,6 @@ def final_output(frequency_list, prediction_label, prediction_prob):
 spam, ham = readWordFrequency(DEFAULT_PATH+WORD_FREQUENCY)
 final_spamicity = build_final_dictionary(spam, ham, DEFAULT_PATH+WORD_FREQUENCY)
 frequency_output = word_frequency_output(testing_emails_list)
-print(str(frequency_output))
 
 #Output Based On Statistical Analysis of length and spelling errors
 dataset = loadTextFile(DEFAULT_PATH + TRAINING_DATA)
@@ -245,8 +244,6 @@ inputSet = length_spelling_inputSet(testing_emails_list)
 predictions = getPredictions(summary_by_class, inputSet)
 prediction_label = [x[0] for x in predictions]
 prediction_prob = [x[1] for x in predictions]
-print(str(prediction_label))
-print(str(prediction_prob))
 
 #Final Output
 final_list = final_output(frequency_output, prediction_label ,prediction_prob)
